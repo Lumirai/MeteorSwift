@@ -16,6 +16,8 @@ public extension Notification {
 }
 
 public protocol MeteorConnectionDelegate {
+    func meteorConnecting()
+    func meteorReconnecting()
     func meteorDidConnect()
     func meteorDidDisconnect()
     func meteorClientReady()
@@ -135,6 +137,7 @@ public class MeteorClient: NSObject {
         ddp?.connectWebSocket()
         NotificationCenter.default.addObserver(self, selector: #selector(didEnterForeground),
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
+        connectionDelegate?.meteorConnecting()
     }
     /// Disconnect from the Meteor client
     public func disconnect()                                                                                            {
@@ -142,6 +145,7 @@ public class MeteorClient: NSObject {
         ddp?.disconnectWebSocket()
         connected = false
         NotificationCenter.default.removeObserver(self, name: UIApplication.didBecomeActiveNotification, object: nil)
+        connectionDelegate?.meteorDidDisconnect()
     }
     /// Registers a Type for a Collection, that type must conform to CollectionDecoder
     /// (which in turn implies conformance with Codable). If provided, the associated
@@ -547,6 +551,7 @@ public class MeteorClient: NSObject {
             return
         }
         ddp.connectWebSocket()
+        connectionDelegate?.meteorReconnecting()
     }
     
     // MARK - Internal
