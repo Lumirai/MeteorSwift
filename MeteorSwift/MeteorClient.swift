@@ -72,6 +72,8 @@ typealias MeteorCollection  = OrderedDictionary<String, Any>
 let MeteorClientRetryIncreaseBy = Double(1)
 let MeteorClientMaxRetryIncrease = Double(6)
 
+var reconnectTask: Task<Void, Never>?
+
 /// This class provide the Meteor client interface and wraps / managed
 /// the DDP interface that connects to the Meteor server.
 public class MeteorClient: NSObject {
@@ -145,6 +147,7 @@ public class MeteorClient: NSObject {
         ddp?.disconnectWebSocket()
         connected = false
         NotificationCenter.default.removeObserver(self, name: UIApplication.didBecomeActiveNotification, object: nil)
+        reconnectTask?.cancel()
         connectionDelegate?.meteorDidDisconnect()
     }
     /// Registers a Type for a Collection, that type must conform to CollectionDecoder
@@ -580,8 +583,10 @@ public class MeteorClient: NSObject {
         if (_tries != _maxRetryIncrement) {
             _tries += 1
         }
-        DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + timeInterval) {
-            self.reconnect()
+
+        reconnectTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(timeInterval * 1_000_000_000))
+            self?.reconnect()
         }
     }
     func invalidateUnresolvedMethods()                                                                                  {
