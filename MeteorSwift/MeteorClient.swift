@@ -135,7 +135,8 @@ public class MeteorClient: NSObject {
     /// Return true if the server is currently connected.
     public var isConnected          : Bool                                                                              { return connected }
     /// Connect to the Meteor client
-    public func connect()                                                                                               {
+    public func connect() {
+        reconnectTask?.cancel()
         ddp?.connectWebSocket()
         NotificationCenter.default.addObserver(self, selector: #selector(didEnterForeground),
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
