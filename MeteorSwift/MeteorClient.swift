@@ -584,9 +584,14 @@ public class MeteorClient: NSObject {
         if (_tries != _maxRetryIncrement) {
             _tries += 1
         }
-
+        
+        print("wait \(timeInterval) seconds...")
+        
+        reconnectTask?.cancel()
         reconnectTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(timeInterval * 1_000_000_000))
+            
+            if Task.isCancelled { return }
             self?.reconnect()
         }
     }
