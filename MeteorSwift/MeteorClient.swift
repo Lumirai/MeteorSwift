@@ -18,6 +18,7 @@ public extension Notification {
 public protocol MeteorConnectionDelegate {
     func meteorConnecting()
     func meteorReconnecting()
+    func meteorWaitingToReconnect(for: TimeInterval)
     func meteorDidConnect()
     func meteorDidDisconnect()
     func meteorClientReady()
@@ -587,11 +588,15 @@ public class MeteorClient: NSObject {
         
         print("wait \(timeInterval) seconds...")
         
+        connectionDelegate?.meteorWaitingToReconnect(for: timeInterval)
+        
         reconnectTask?.cancel()
         reconnectTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(timeInterval * 1_000_000_000))
             
             if Task.isCancelled { return }
+            self?.connectionDelegate?.meteorReconnecting()
+            try? await Task.sleep(nanoseconds: UInt64(0.5 * 1_000_000_000))
             self?.reconnect()
         }
     }
