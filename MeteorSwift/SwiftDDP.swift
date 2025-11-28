@@ -23,12 +23,14 @@ class SwiftDDP: NSObject {
     fileprivate var urlString   : String
     fileprivate var delegate    : SwiftDDPDelegate?
     fileprivate var webSocket   : SRWebSocket?
+    fileprivate var uaString    : String
 
     fileprivate let jsonEncoder = JSONEncoder()
     
-    init(withURLString: String, delegate: SwiftDDPDelegate?)                                            {
+    init(withURLString: String, delegate: SwiftDDPDelegate?, withUAString: String = "SwiftDDP/1.0")        {
         self.urlString  = withURLString
         self.delegate   = delegate
+        self.uaString   = withUAString
     }
     var socketNotOpen:Bool {
         return socketState != SRReadyState.OPEN
@@ -164,7 +166,9 @@ extension SwiftDDP { // MARK - Internal
     }
     func setupWebSocket()                                                                           {
         if let url = URL(string: urlString) {
-            let request = URLRequest(url: url)
+            var request = URLRequest(url: url)
+            request.setValue(uaString, forHTTPHeaderField: "User-Agent")
+            print("ua = \(uaString)")
             webSocket = DependencyProvider.provideSRWebSocket(withRequest:request)
             webSocket?.delegate = self
         }

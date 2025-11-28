@@ -11,11 +11,7 @@ import SocketRocket
 
 struct DependencyProvider                                                   {
     static func provideSRWebSocket(withRequest: URLRequest) -> SRWebSocket  {
-        
-        var request = withRequest
-        
-        request.setValue("LumiraiViewer+/1.0 (iOS; iPad)", forHTTPHeaderField: "User-Agent")
-        return SRWebSocket(urlRequest: request)
+        return SRWebSocket(urlRequest: withRequest)
     }
 }
 

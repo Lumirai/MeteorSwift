@@ -83,6 +83,8 @@ public class MeteorClient: NSObject {
     var ddpVersion                  = "1"
     var ddp                         : SwiftDDP?
     
+    var ua: String
+    
     let jsonDecoder                 = JSONDecoder()
     //
     // Raw Collections backing store
@@ -123,7 +125,8 @@ public class MeteorClient: NSObject {
     ///         "ws://app.mysite.com/websocket"
     ///         "wss://app.mysecuresite.com/websocket"
     ///   - ddpVer: The DDP version to use, defaults to "1"
-    public init(site: String, withDDPVersion ddpVer: String = "1")                                                      {
+    public init(site: String, withDDPVersion ddpVer: String = "1", withUAString: String = "MeteorSwift/1.0")                                                      {
+        ua = withUAString
         ddpVersion = ddpVer
         if (ddpVersion == "1") {
             _supportedVersions = ["1", "pre2"]
@@ -131,7 +134,7 @@ public class MeteorClient: NSObject {
             _supportedVersions = ["pre2", "pre1"]
         }
         super.init()
-        ddp = SwiftDDP.init(withURLString: site, delegate: self)
+        ddp = SwiftDDP.init(withURLString: site, delegate: self, withUAString: ua)
     }
     /// Return true if the server is currently connected.
     public var isConnected          : Bool                                                                              { return connected }
