@@ -437,6 +437,11 @@ public class MeteorClient: NSObject {
         logon(withUserParameters: buildUserParameters(withUsernameOrEmail: usernameOrEmail, password:password), responseCallback: responseCallback)
     }
     
+    
+    public func logonWith(email: String, token: String, responseCallback: MeteorClientMethodCallback? = nil) {
+        logon(withUserParameters: buildUserParameters(withEmail: email, token:token), responseCallback: responseCallback)
+    }
+    
     /*
      * Logs in using access token -- this breaks the current convention,
      * but the method call is dependent on some of this class's variables

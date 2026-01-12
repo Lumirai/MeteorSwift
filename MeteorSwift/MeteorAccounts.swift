@@ -110,6 +110,9 @@ extension MeteorClient { // Accounts
             return buildUserParameters(withUsername:withUsernameOrEmail, password:password)
         }
     }
+    func buildUserParameters(withEmail: String, token: String) -> EJSONObject                                        {
+        return ["selector": ["email": withEmail], "token": token]
+    }
     func buildOAuthRequestString(with accessToken:String, serviceName: String) -> String                                {
         
         if var homeUrl = ddp?.url {
