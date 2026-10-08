@@ -13,7 +13,16 @@ extension MeteorClient { // Parsing
         if _methodIds.contains(messageId) {
             let callback = _responseCallbacks[messageId]
             if let errorDesc = message["error"] as? EJSONObject {
-                let userInfo = [NSLocalizedDescriptionKey: errorDesc["message"] as? String ?? "Missing Error Message"]
+                var userInfo: [String: Any] = [NSLocalizedDescriptionKey: errorDesc["message"] as? String ?? "Missing Error Message"]
+                // Meteor's `error` is a string for most errors ("no-2fa-code") and a number for others (403)
+                if let code = errorDesc["error"] as? String {
+                    userInfo[MeteorClient.MeteorErrorCodeKey] = code
+                } else if let code = errorDesc["error"] as? Int {
+                    userInfo[MeteorClient.MeteorErrorCodeKey] = String(code)
+                }
+                if let reason = errorDesc["reason"] as? String {
+                    userInfo[MeteorClient.MeteorErrorReasonKey] = reason
+                }
                 let responseError = NSError(domain: errorDesc["errorType"] as? String ?? "Method Error",
                                             code: errorDesc["error"] as? Int ?? -1,
                                             userInfo:userInfo)

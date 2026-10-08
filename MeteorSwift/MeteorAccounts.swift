@@ -97,21 +97,30 @@ extension MeteorClient { // Accounts
                 "password": [ "digest": password.sha256(), "algorithm": "sha-256" ],
                 "profile": ["first_name": firstName, "last_name": lastName,"signupToken": ""]]
     }
-    func buildUserParameters(withUsername: String, password: String) -> EJSONObject                                     {
-        return ["user": ["username": withUsername], "password": ["digest": password.sha256(), "algorithm": "sha-256" ]]
+    func buildUserParameters(withUsername: String, password: String, code: String? = nil) -> EJSONObject                {
+        return adding2faCode(code, to: ["user": ["username": withUsername],
+                                        "password": ["digest": password.sha256(), "algorithm": "sha-256" ]])
     }
-    func buildUserParameters(withEmail: String, password: String) -> EJSONObject                                        {
-        return ["user": ["email": withEmail], "password": ["digest": password.sha256(), "algorithm": "sha-256" ]]
+    func buildUserParameters(withEmail: String, password: String, code: String? = nil) -> EJSONObject                   {
+        return adding2faCode(code, to: ["user": ["email": withEmail],
+                                        "password": ["digest": password.sha256(), "algorithm": "sha-256" ]])
     }
-    func buildUserParameters(withUsernameOrEmail: String, password: String) -> EJSONObject                              {
+    func buildUserParameters(withUsernameOrEmail: String, password: String, code: String? = nil) -> EJSONObject         {
         if withUsernameOrEmail.contains("@") {
-            return buildUserParameters(withEmail:withUsernameOrEmail, password:password)
+            return buildUserParameters(withEmail:withUsernameOrEmail, password:password, code:code)
         } else {
-            return buildUserParameters(withUsername:withUsernameOrEmail, password:password)
+            return buildUserParameters(withUsername:withUsernameOrEmail, password:password, code:code)
         }
     }
-    func buildUserParameters(withEmail: String, token: String) -> EJSONObject                                        {
-        return ["selector": ["email": withEmail], "token": token]
+    func buildUserParameters(withEmail: String, token: String, code: String? = nil) -> EJSONObject                      {
+        return adding2faCode(code, to: ["selector": ["email": withEmail], "token": token])
+    }
+    /// The server rejects an empty `code`, so the key is only sent when there is one.
+    func adding2faCode(_ code: String?, to parameters: EJSONObject) -> EJSONObject                                      {
+        guard let code, !code.isEmpty else { return parameters }
+        var parameters = parameters
+        parameters["code"] = code
+        return parameters
     }
     func buildOAuthRequestString(with accessToken:String, serviceName: String) -> String                                {
         

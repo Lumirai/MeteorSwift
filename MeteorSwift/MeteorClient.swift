@@ -79,6 +79,10 @@ var reconnectTask: Task<Void, Never>?
 /// the DDP interface that connects to the Meteor server.
 public class MeteorClient: NSObject {
     static let MeteorTransportErrorDomain   = "sorr.swiftddp.transport"
+    /// `userInfo` key for the server's `error` field as a string, e.g. "no-2fa-code" or "403".
+    public static let MeteorErrorCodeKey    = "MeteorErrorCode"
+    /// `userInfo` key for the server's `reason` field.
+    public static let MeteorErrorReasonKey  = "MeteorErrorReason"
     
     var ddpVersion                  = "1"
     var ddp                         : SwiftDDP?
@@ -413,18 +417,22 @@ public class MeteorClient: NSObject {
     /// - Parameters:
     ///   - username: The username to login with
     ///   - password: The password to login with. This will be SHA256 encoded before transmitting.
+    ///   - code: (Optional) two-factor code, sent after the server answers "no-2fa-code".
     ///   - responseCallback: (Optional) callback once login requestion completes.
-    public func logonWith(username: String, password:String, responseCallback: MeteorClientMethodCallback? = nil)       {
-        logon(withUserParameters: buildUserParameters(withUsername: username, password:password), responseCallback: responseCallback)
+    public func logonWith(username: String, password:String, code: String? = nil,
+                          responseCallback: MeteorClientMethodCallback? = nil)                                          {
+        logon(withUserParameters: buildUserParameters(withUsername: username, password:password, code:code), responseCallback: responseCallback)
     }
     /// Login to Meteor Client with an email and password.
     ///
     /// - Parameters:
     ///   - email: The username to login with
     ///   - password: The password to login with. This will be SHA256 encoded before transmitting.
+    ///   - code: (Optional) two-factor code, sent after the server answers "no-2fa-code".
     ///   - responseCallback: (Optional) callback once login requestion completes.
-    public func logonWith(email: String, password: String, responseCallback: MeteorClientMethodCallback? = nil)         {
-        logon(withUserParameters: buildUserParameters(withEmail: email, password:password), responseCallback: responseCallback)
+    public func logonWith(email: String, password: String, code: String? = nil,
+                          responseCallback: MeteorClientMethodCallback? = nil)                                          {
+        logon(withUserParameters: buildUserParameters(withEmail: email, password:password, code:code), responseCallback: responseCallback)
     }
     
     /// Login to Meteor Client with an email/username and password.
@@ -432,14 +440,17 @@ public class MeteorClient: NSObject {
     /// - Parameters:
     ///   - usernameOrEmail: The username / email to login with
     ///   - password: The password to login with. This will be SHA256 encoded before transmitting.
+    ///   - code: (Optional) two-factor code, sent after the server answers "no-2fa-code".
     ///   - responseCallback: (Optional) callback once login requestion completes.
-    public func logonWith(usernameOrEmail: String, password: String, responseCallback: MeteorClientMethodCallback?)     {
-        logon(withUserParameters: buildUserParameters(withUsernameOrEmail: usernameOrEmail, password:password), responseCallback: responseCallback)
+    public func logonWith(usernameOrEmail: String, password: String, code: String? = nil,
+                          responseCallback: MeteorClientMethodCallback?)                                                {
+        logon(withUserParameters: buildUserParameters(withUsernameOrEmail: usernameOrEmail, password:password, code:code), responseCallback: responseCallback)
     }
     
     
-    public func logonWith(email: String, token: String, responseCallback: MeteorClientMethodCallback? = nil) {
-        logon(withUserParameters: buildUserParameters(withEmail: email, token:token), responseCallback: responseCallback)
+    public func logonWith(email: String, token: String, code: String? = nil,
+                          responseCallback: MeteorClientMethodCallback? = nil) {
+        logon(withUserParameters: buildUserParameters(withEmail: email, token:token, code:code), responseCallback: responseCallback)
     }
     
     /*
@@ -640,5 +651,12 @@ public class MeteorClient: NSObject {
     @objc func didEnterForeground() {
         _tries = 1
         self.reconnect();
+    }
+}
+
+public extension Error {
+    /// The Meteor `error` field of a failed method call ("no-2fa-code", "403"), if the server sent one.
+    var meteorErrorCode: String? {
+        return (self as NSError).userInfo[MeteorClient.MeteorErrorCodeKey] as? String
     }
 }
