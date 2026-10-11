@@ -26,3 +26,12 @@ struct DDPIdGenerator                          {
     }
 }
 
+
+// Shadows Swift.print for the whole module so console logging only happens in
+// debug builds. Release builds must never write DDP messages or documents to
+// the device console.
+func print(_ items: Any..., separator: String = " ", terminator: String = "\n") {
+    #if DEBUG
+    Swift.print(items.map { "\($0)" }.joined(separator: separator), terminator: terminator)
+    #endif
+}
