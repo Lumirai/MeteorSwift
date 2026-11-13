@@ -78,7 +78,9 @@ var reconnectTask: Task<Void, Never>?
 /// This class provide the Meteor client interface and wraps / managed
 /// the DDP interface that connects to the Meteor server.
 public class MeteorClient: NSObject {
-    static let MeteorTransportErrorDomain   = "sorr.swiftddp.transport"
+    /// Errors raised by this client itself (not connected, disconnected mid-call, logon already in
+    /// flight), as opposed to answers from the server.
+    public static let MeteorTransportErrorDomain   = "sorr.swiftddp.transport"
     /// `userInfo` key for the server's `error` field as a string, e.g. "no-2fa-code" or "403".
     public static let MeteorErrorCodeKey    = "MeteorErrorCode"
     /// `userInfo` key for the server's `reason` field.
@@ -145,6 +147,8 @@ public class MeteorClient: NSObject {
     /// Connect to the Meteor client
     public func connect() {
         reconnectTask?.cancel()
+        // A call still waiting on the old socket would never be answered.
+        invalidateUnresolvedMethods()
         ddp?.connectWebSocket()
         NotificationCenter.default.addObserver(self, selector: #selector(didEnterForeground),
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
@@ -155,6 +159,7 @@ public class MeteorClient: NSObject {
         _disconnecting = true
         ddp?.disconnectWebSocket()
         connected = false
+        invalidateUnresolvedMethods()
         NotificationCenter.default.removeObserver(self, name: UIApplication.didBecomeActiveNotification, object: nil)
         reconnectTask?.cancel()
         connectionDelegate?.meteorDidDisconnect()
@@ -303,6 +308,8 @@ public class MeteorClient: NSObject {
             }
             return methodId
         }
+        // The socket refused the write: answer now rather than never.
+        responseCallback?(.failure(notConnectedError()))
         return nil
     }
     /// Records a subscription for content with the Meteor server
@@ -397,7 +404,17 @@ public class MeteorClient: NSObject {
     /// Get current session token (if logged in)
     public var currentSessionToken : String?                                                                            {
         return sessionToken
-    }   
+    }
+    /// True once a logon (or an adopted session) has been accepted by the server on this connection.
+    public var isLoggedIn : Bool                                                                                        {
+        return authState == .AuthStateLoggedIn
+    }
+    /// Record a session the app established itself, for example by calling `login` with OAuth
+    /// credentials. Without this the client knows nothing of the session: the next reconnect would
+    /// resume with a stale token or none, and its logon guard would be stuck if a login was lost.
+    public func adoptSession(userId: String, token: String)                                                             {
+        setAuthStateToLoggedIn(userId: userId, withToken: token)
+    }
     var okToSend:Bool                                                                                                   {
         get {
             return connected
@@ -574,6 +591,9 @@ public class MeteorClient: NSObject {
         guard let ddp = ddp, ddp.socketNotOpen else {
             return
         }
+        // The socket being replaced may still hold a call that was never answered. Its callback
+        // runs now, so a logon in flight does not leave the client refusing every later logon.
+        invalidateUnresolvedMethods()
         ddp.connectWebSocket()
         connectionDelegate?.meteorReconnecting()
     }
@@ -581,7 +601,9 @@ public class MeteorClient: NSObject {
     // MARK - Internal
     func send(parameters: [Any]?, methodName: String) -> String?                                                        {
         let methodId = DDPIdGenerator.nextId
-        ddp?.method(withId: methodId, method:methodName, parameters:parameters)
+        guard ddp?.method(withId: methodId, method:methodName, parameters:parameters) == true else {
+            return nil
+        }
         return methodId
     }
 
@@ -636,13 +658,14 @@ public class MeteorClient: NSObject {
             ddp?.subscribe(withId: uid, name: name, parameters:params)
         }
     }
+    func notConnectedError() -> NSError                                                                                 {
+        return NSError(domain: MeteorClient.MeteorTransportErrorDomain,
+                       code: MeteorClientError.NotConnected.rawValue,
+                       userInfo: [NSLocalizedDescriptionKey: "You are not connected"])
+    }
     func rejectIfNotConnected(responseCallback: MeteorClientMethodCallback?) -> Bool                                    {
         guard okToSend else {
-            let userInfo = [NSLocalizedDescriptionKey: "You are not connected"]
-            let notConnectedError = NSError(domain: MeteorClient.MeteorTransportErrorDomain,
-                                            code: MeteorClientError.NotConnected.rawValue,
-                                            userInfo:userInfo)
-            responseCallback?(.failure(notConnectedError))
+            responseCallback?(.failure(notConnectedError()))
             return true
         }
         return false

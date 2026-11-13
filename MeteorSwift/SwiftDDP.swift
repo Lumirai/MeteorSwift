@@ -93,14 +93,23 @@ class SwiftDDP: NSObject {
         let json = buildJSON(withFields: fields, parameters: nil)
         try? webSocket?.send(string: json)
     }
-    func method(withId id: String, method: String, parameters: [Any]?)                                      {
+    /// False when the socket is not open or the write failed, so the caller can fail the call at
+    /// once instead of waiting for an answer that will never come.
+    @discardableResult
+    func method(withId id: String, method: String, parameters: [Any]?) -> Bool                              {
         //method (client -> server):
         //  method: string (method name)
         //  params: optional array of EJSON items (parameters to the method)
         //  id: string (an arbitrary client-determined identifier for this method call)
         let fields = ["msg": "method", "method": method, "id": id]
         let json = buildJSON(withFields: fields, parameters: parameters)
-        try? webSocket?.send(string: json)
+        guard let webSocket, webSocket.readyState == SRReadyState.OPEN else { return false }
+        do {
+            try webSocket.send(string: json)
+            return true
+        } catch {
+            return false
+        }
     }
 
     var url:String { get { return urlString } }

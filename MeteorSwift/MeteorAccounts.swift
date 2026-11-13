@@ -35,6 +35,12 @@ extension MeteorClient { // Accounts
 
             case .failure(let error):
                 self.setAuthStatetoLoggedOut()
+                // A resume the server refused (logged out, expired) must not be retried on every
+                // reconnect. A transport error says nothing about the token, so it is kept.
+                if withUserParameters["resume"] != nil,
+                   (error as NSError).domain != MeteorClient.MeteorTransportErrorDomain {
+                    self.sessionToken = nil
+                }
                 self.authDelegate?.authenticationFailed(withError: error)
             }
             responseCallback?($0)
